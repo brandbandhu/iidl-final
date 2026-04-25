@@ -185,7 +185,11 @@
             <textarea name="role_model" placeholder="Who is your role model and why? *" aria-label="Who is your role model and why?" required></textarea>
             <textarea name="change" placeholder="If there could be one thing which you could change about your area/locality/district/state/country, what would it be? *" aria-label="If there could be one thing which you could change about your area, locality, district, state, or country, what would it be?" required></textarea>
             <textarea name="sop" placeholder="Why do you want to join this course (Statement of Purpose) *" aria-label="Why do you want to join this course (Statement of Purpose)" required></textarea>
-            <div class="file-field"><input name="cv" type="file" accept=".pdf,.doc,.docx" required aria-label="Upload your latest CV"></div>
+            <div class="file-field">
+              <label for="cv-upload">Upload your latest CV *</label>
+              <input id="cv-upload" name="cv" type="file" accept=".pdf,.doc,.docx" required aria-label="Upload your latest CV">
+              <p>Upload your CV in Word or PDF format only.</p>
+            </div>
             <div class="verification"><input name="captcha" type="text" inputmode="numeric" pattern="[0-9]{2}" maxlength="2" placeholder="Please enter any two digits * Example: 12" aria-label="Verification code" required><input class="honeypot" name="website" type="text" tabindex="-1" autocomplete="off" placeholder="This box is for spam protection - please leave it blank"></div>
             <button class="btn btn-accent" type="submit">Submit Application</button>
           </form>
