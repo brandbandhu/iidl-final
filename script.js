@@ -56,6 +56,21 @@ document.querySelectorAll(".reveal, .reveal-group, .stats-grid").forEach((elemen
 });
 
 let counted = false;
+const registerModal = document.getElementById("register");
+const registerForm = document.querySelector(".register-form");
+const callbackForm = document.querySelector(".callback-form");
+const privyrWebhookUrl = "https://www.privyr.com/api/v1/incoming-leads/0vZfjMQw/xyzLRPEq";
+
+function formatCount(value, element) {
+  const prefix = element.dataset.prefix ?? "";
+  const suffix = element.dataset.suffix ?? "";
+  const plus = element.dataset.plus !== "false";
+  const format = element.dataset.format;
+  const formattedValue =
+    format === "indian" ? new Intl.NumberFormat("en-IN").format(value) : String(value);
+
+  return `${prefix}${formattedValue}${suffix}${plus ? "+" : ""}`;
+}
 
 function animateCounters() {
   if (counted) return;
@@ -63,7 +78,6 @@ function animateCounters() {
 
   document.querySelectorAll("[data-count]").forEach((element, index) => {
     const end = Number(element.dataset.count);
-    const plus = element.dataset.plus !== "false";
     const duration = 1700;
     let startTime;
 
@@ -74,7 +88,7 @@ function animateCounters() {
         const eased = 1 - Math.pow(1 - progress, 3);
         const value = Math.floor(eased * end);
 
-        element.textContent = (progress < 1 ? value : end) + (plus ? "+" : "");
+        element.textContent = formatCount(progress < 1 ? value : end, element);
         element.classList.add("counting");
         setTimeout(() => element.classList.remove("counting"), 120);
 
@@ -94,37 +108,96 @@ document.querySelectorAll(".faq button").forEach((button) => {
   });
 });
 
-document.querySelector(".callback-form")?.addEventListener("submit", (event) => {
+function trimValue(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function buildLeadPayload(form, source) {
+  const formData = new FormData(form);
+  const payload = {
+    name: trimValue(formData.get("name")),
+    phone: trimValue(formData.get("phone") ?? formData.get("mobile")),
+    email: trimValue(formData.get("email")),
+    source,
+    page_url: window.location.href,
+    submitted_at: new Date().toISOString(),
+  };
+
+  for (const [key, rawValue] of formData.entries()) {
+    if (["name", "phone", "email", "mobile", "website"].includes(key)) {
+      continue;
+    }
+
+    const value = trimValue(rawValue);
+    if (value) {
+      payload[key] = value;
+    }
+  }
+
+  return payload;
+}
+
+async function submitLeadForm(form, successText, source, onSuccess) {
+  const button = form.querySelector("button");
+  if (!button) return;
+
+  const oldText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Submitting...";
+
+  try {
+    const response = await fetch(privyrWebhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(buildLeadPayload(form, source)),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Privyr webhook failed with status ${response.status}`);
+    }
+
+    button.textContent = successText;
+    form.reset();
+    window.setTimeout(() => {
+      button.textContent = oldText;
+      button.disabled = false;
+      onSuccess?.();
+    }, 1800);
+  } catch (error) {
+    console.error("Lead submission failed:", error);
+    button.textContent = "Try Again";
+    window.setTimeout(() => {
+      button.textContent = oldText;
+      button.disabled = false;
+    }, 2200);
+  }
+}
+
+callbackForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
-  const button = form.querySelector("button");
-  const oldText = button.textContent;
-  button.textContent = "Request Sent";
-  setTimeout(() => {
-    button.textContent = oldText;
-  }, 1800);
-  form.reset();
+  await submitLeadForm(form, "Request Sent", "Website Callback Form");
 });
 
-document.querySelector(".register-form")?.addEventListener("submit", (event) => {
+registerForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
   if (form.website?.value) return;
-  const button = form.querySelector("button");
-  const oldText = button.textContent;
-  button.textContent = "Application Submitted";
-  setTimeout(() => {
-    button.textContent = oldText;
-  }, 2200);
-  form.reset();
-});
 
-const registerModal = document.getElementById("register");
+  await submitLeadForm(form, "Submitted", "Website Registration Form", () => {
+    closeRegisterModal();
+  });
+});
 
 function openRegisterModal() {
   registerModal?.classList.add("open");
   registerModal?.setAttribute("aria-hidden", "false");
   document.body.classList.add("modal-open");
+  window.setTimeout(() => {
+    registerForm?.querySelector("input")?.focus();
+  }, 80);
 }
 
 function closeRegisterModal() {
